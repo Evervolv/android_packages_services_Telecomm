@@ -44,6 +44,8 @@ import com.android.internal.annotations.VisibleForTesting;
 import android.telecom.CallerInfo;
 import com.android.server.telecom.callfiltering.CallFilteringResult;
 
+import com.evervolv.internal.phone.SensitivePhoneNumbers;
+
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -149,6 +151,7 @@ public final class CallLogManager extends CallsManagerListenerBase {
 
     private Object mLock;
     private String mCurrentCountryIso;
+    private SensitivePhoneNumbers mSensitivePhoneNumbers;
 
     public CallLogManager(Context context, PhoneAccountRegistrar phoneAccountRegistrar,
             MissedCallNotifier missedCallNotifier) {
@@ -158,6 +161,7 @@ public final class CallLogManager extends CallsManagerListenerBase {
         mPhoneAccountRegistrar = phoneAccountRegistrar;
         mMissedCallNotifier = missedCallNotifier;
         mLock = new Object();
+        mSensitivePhoneNumbers = SensitivePhoneNumbers.getInstance();
     }
 
     @Override
@@ -424,9 +428,13 @@ public final class CallLogManager extends CallsManagerListenerBase {
                     CarrierConfigManager.KEY_ALLOW_EMERGENCY_NUMBERS_IN_CALL_LOG_BOOL);
         }
 
+        // Don't log sensitive numbers.
+        boolean isSensitiveNumber = mSensitivePhoneNumbers.isSensitiveNumber(mContext, number,
+                mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(accountHandle));
+
         // Don't log emergency numbers if the device doesn't allow it.
         final boolean isOkToLogThisCall = (!isEmergency || okToLogEmergencyNumber)
-                && !isUnloggableNumber(number, configBundle);
+                && !isUnloggableNumber(number, configBundle) && !isSensitiveNumber;
 
         sendAddCallBroadcast(callType, duration);
 
